@@ -92,6 +92,10 @@ Non-default tracks write to `output/<date>-<track>/` and tag the Source column `
 Each run writes `output/<date>/findings-<source>.md` (the raw agent write-ups – read these
 when tuning prompts) and `output/<date>/sweep.csv`, and prints a cost breakdown.
 
+It also prints a per-source table – found, duplicate, not a posting, closed, unconfirmed, live,
+and the screening verdicts – and appends the same rows (with date and track) to
+`output/source-stats.csv`, one log across all runs for comparing which sources pay off.
+
 ## Dedup without Google setup
 
 Until the service account exists: open the sheet → your tracker tab → File → Download → CSV, and

@@ -21,6 +21,7 @@ from .liveness import check_all
 from .models import JobLead
 from .research import extract_leads, research_source
 from .screen import screen_leads
+from .stats import append_log, format_table, source_funnel
 
 VERDICT_ORDER = {"priority": 0, "candidate": 1, "unscreened": 2, "exclude": 3}
 
@@ -74,10 +75,13 @@ async def main(args) -> None:
     )
     all_leads: list[JobLead] = []
     sources_by_url: dict[str, str] = {}
+    leads_by_source: dict[str, list[JobLead] | None] = {}
     for key, result in zip(source_keys, results):
         if isinstance(result, BaseException):
             print(f"  ✗ {key}: {type(result).__name__}: {result}")
+            leads_by_source[key] = None
             continue
+        leads_by_source[key] = result
         all_leads.extend(result)
         # The Source column carries the track too, so non-default-track leads are easy to filter in the inbox.
         label = key if track.key == default_track else f"{track.key}:{key}"
@@ -137,6 +141,13 @@ async def main(args) -> None:
 
     counts = {k: sum(1 for r in rows if r[1] == k) for k in VERDICT_ORDER}
     print("Verdicts: " + ", ".join(f"{k} {n}" for k, n in counts.items() if n))
+
+    funnel = source_funnel(leads_by_source, [lead for lead, _ in dropped],
+                           {url: l.state for url, l in liveness.items()},
+                           {url: v.verdict for url, v in verdicts.items()})
+    stats_path = config.OUTPUT_DIR / "source-stats.csv"
+    append_log(funnel, today, track.key, stats_path)
+    print(f"\nBy source (appended to {stats_path.name}):\n" + format_table(funnel))
     print("\nCost this run:\n" + costs.report())
 
 

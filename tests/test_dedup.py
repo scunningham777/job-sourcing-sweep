@@ -213,3 +213,33 @@ class LivenessTests(unittest.TestCase):
         board = self.fake(body='{"jobs": [{"id": "live-id"}]}')
         self.assertEqual(self.classify("https://jobs.ashbyhq.com/acme/live-id", board).state, "live")
         self.assertEqual(self.classify("https://jobs.ashbyhq.com/acme/gone-id", board).state, "closed")
+
+
+class SourceStatsTests(unittest.TestCase):
+    def test_funnel_follows_each_lead_to_its_outcome(self):
+        from sweep.stats import source_funnel
+        a1, a2, a3 = (lead(title=f"Role {i}", url=f"https://jobs.ashbyhq.com/acme/{i}") for i in range(3))
+        dupe = lead(title="Role 0", url="https://jobs.lever.co/acme/0")   # same role, found by lever
+        kept, dropped = dedup_leads([a1, a2, a3, dupe], set())
+        funnel = source_funnel(
+            {"ashby": [a1, a2, a3], "lever": [dupe], "hn": None},
+            [d for d, _ in dropped],
+            {a1.url: "live", a2.url: "closed", a3.url: "unknown"},
+            {a1.url: "priority", a3.url: "exclude"},
+        )
+        self.assertEqual(funnel["ashby"], {"status": "ok", "found": 3, "duplicate": 0, "not_posting": 0,
+                                           "closed": 1, "unconfirmed": 1, "live": 1,
+                                           "priority": 1, "candidate": 0, "exclude": 1})
+        self.assertEqual((funnel["lever"]["found"], funnel["lever"]["duplicate"]), (1, 1))
+        self.assertEqual((funnel["hn"]["status"], funnel["hn"]["found"]), ("failed", 0))
+
+    def test_log_writes_header_once(self):
+        from sweep.stats import append_log, source_funnel
+        funnel = source_funnel({"ashby": [lead()]}, [], {lead().url: "live"}, {})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source-stats.csv"
+            append_log(funnel, "2026-10-07", "remote", path)
+            append_log(funnel, "2026-10-14", "remote", path)
+            rows = list(csv.reader(path.open(encoding="utf-8")))
+        self.assertEqual([r[0] for r in rows], ["date", "2026-10-07", "2026-10-14"])
+        self.assertEqual(rows[1][:6], ["2026-10-07", "remote", "ashby", "ok", "1", "0"])
