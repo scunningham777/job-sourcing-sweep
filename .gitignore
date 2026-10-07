@@ -1,0 +1,16 @@
+# secrets
+.env
+google-service-account.json
+
+# personal search profile (template: search.example.toml)
+search.toml
+criteria/
+
+# local environment / tooling
+.venv
+__pycache__/
+.claude/
+
+# run artifacts (may contain scraped postings)
+output/
+data/

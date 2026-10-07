@@ -1,0 +1,47 @@
+# Personal settings for the sweep. Copy this file to search.toml (git-ignored) and make it yours.
+
+# The track `python -m sweep` uses when --track isn't given. Defaults to the first track below.
+default_track = "remote"
+
+# Your Google Sheet's layout. The sheet's ID lives in .env as SPREADSHEET_ID.
+# The tracker tab is read only (for dedup); the sweep appends to the inbox tab, creating it if needed.
+[sheet]
+tracker_tab = "Tracker"
+inbox_tab = "Sweep inbox"
+company_column = "A"   # column letters in the tracker tab
+link_column = "B"      # posting URL; a cell may hold several, separated by ";"
+notes_column = "C"     # status / notes – shown to screening when a company is already tracked
+
+# Biases web search results and gives local sources a place to search.
+[location]
+city = "Springfield"
+region = "Illinois"
+country = "US"
+
+# Optional extra notes appended to a source's built-in hint, keyed by source.
+[source_notes]
+workday_local = "Large local employers on Workday include Acme Corp, Globex, and Initech."
+
+# One table per track. Pick its sources from: ashby, greenhouse, lever, hn, builtin, staffing,
+# dice, workday_local (see SOURCES in sweep/config.py).
+#   criteria_file  – the full write-up screening judges every lead against, relative to this folder.
+#                    Put your own in criteria/ (git-ignored); the examples/ ones show the shape.
+#   search_profile – the short version the research workers search for.
+
+[tracks.remote]
+criteria_file = "examples/criteria-remote.md"
+sources = ["ashby", "greenhouse", "lever", "hn", "builtin"]
+search_profile = """\
+Senior front-end (or front-end-leaning full-stack) software engineer roles.
+Fully remote within the US. Core stack: TypeScript, React. Base pay should plausibly clear $140K.
+Only postings that are currently open and were posted or refreshed in roughly the last 14 days."""
+
+[tracks.local]
+criteria_file = "examples/criteria-local.md"
+sources = ["staffing", "dice", "workday_local"]
+search_profile = """\
+Front-end or full-stack developer roles that could start within a few weeks: contract, \
+contract-to-hire, or full-time. Location: fully remote in the US, or hybrid/on-site within about \
+45 minutes of Springfield, IL. Pay: W-2 contract around $55/hr or more, or full-time base around \
+$110K or more; keep postings with no rate listed. Record employment type and contract length.
+Only postings that are currently open and were posted or refreshed in roughly the last 14 days."""
