@@ -82,10 +82,15 @@ class ToolActivityTests(unittest.TestCase):
             NS(type="web_search_tool_result", content=NS(type="web_search_tool_result_error",
                                                          error_code="max_uses_exceeded")),
             NS(type="server_tool_use", name="web_fetch"),
+            NS(type="tool_use", name="list_company_jobs"),
+            {"type": "tool_result", "tool_use_id": "x", "content": "not found", "is_error": True},
+            NS(type="tool_use", name="get_job_posting"),
+            {"type": "tool_result", "tool_use_id": "y", "content": "{}"},
             NS(type="text", text="done"),
         ]
         self.assertEqual(summarize_tool_activity(blocks),
-                         {"web_search": 2, "web_fetch": 1, "errors": {"max_uses_exceeded": 1}})
+                         {"web_search": 2, "web_fetch": 1, "board_api": 2,
+                          "errors": {"max_uses_exceeded": 1, "board_api_error": 1}})
 
 
 if __name__ == "__main__":
@@ -145,8 +150,8 @@ class LivenessTests(unittest.TestCase):
 
     @staticmethod
     def fake(status=200, body="<h1>Senior Angular Developer</h1>", final_url=None):
-        from sweep.liveness import _Response
-        return lambda url: _Response(status, final_url or url, body)
+        from sweep.ats import Response
+        return lambda url, json_body=None: Response(status, final_url or url, body)
 
     def classify(self, url, fetch):
         from sweep.liveness import classify
@@ -160,19 +165,24 @@ class LivenessTests(unittest.TestCase):
         body = "<p>Sorry, this job is no longer available. Similar jobs below.</p>"
         self.assertEqual(self.classify("https://x.com/job/1", self.fake(body=body)).state, "closed")
 
-    def test_greenhouse_error_redirect(self):
-        fetch = self.fake(final_url="https://job-boards.greenhouse.io/acme?error=true")
-        self.assertEqual(self.classify("https://job-boards.greenhouse.io/acme/jobs/1", fetch).state, "closed")
-
     def test_open_page_is_live(self):
-        self.assertEqual(self.classify("https://jobs.lever.co/acme/1", self.fake()).state, "live")
+        self.assertEqual(self.classify("https://careers.example.com/jobs/123", self.fake()).state, "live")
 
     def test_blocked_is_unknown_not_closed(self):
         self.assertEqual(self.classify("https://x.com/job/1", self.fake(403)).state, "unknown")
 
-    def test_js_rendered_host_is_unknown(self):
-        url = "https://acme.wd5.myworkdayjobs.com/External/job/Springfield/UI-Developer_R1"
-        self.assertEqual(self.classify(url, self.fake()).state, "unknown")
+    def test_ats_postings_use_the_job_board_api(self):
+        urls = [
+            "https://job-boards.greenhouse.io/acme/jobs/1",
+            "https://jobs.lever.co/acme/1",
+            "https://acme.wd5.myworkdayjobs.com/External/job/Springfield/UI-Developer_R1",  # JS-rendered page
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.classify(url, self.fake(404, '{"error": "not found"}')).state, "closed")
+                self.assertEqual(self.classify(url, self.fake(body='{"title": "UI Developer"}')).state, "live")
+                # API trouble isn't evidence the job closed
+                self.assertEqual(self.classify(url, self.fake(503, "")).state, "unknown")
 
     def test_search_and_listing_pages_are_not_postings(self):
         never_fetch = lambda url: self.fail(f"should not fetch {url}")  # rejected from the URL alone

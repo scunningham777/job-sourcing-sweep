@@ -29,8 +29,15 @@ MAX_FETCH_TOKENS = 10_000        # truncate any single fetched page
 MAX_PAUSE_CONTINUATIONS = 4      # server-tool turns can pause; cap how often we resume
 MAX_PARALLEL_WORKERS = 3
 
+# Job-board API tools (sweep/ats.py, run by our code, not Anthropic's servers). Calls are free, but
+# every result is input tokens on the next turn – these caps keep a worker's context in check.
+MAX_BOARD_CALLS_PER_SOURCE = 25  # list_company_jobs + get_job_posting combined
+MAX_AGENT_TURNS = 30             # each client tool round trip is one more API request
+BOARD_LIST_LIMIT = 40            # postings returned per list_company_jobs call
+POSTING_DESCRIPTION_CHARS = 6000 # ~1.5K tokens; web_fetch pages are capped at MAX_FETCH_TOKENS
+
 # Liveness check (sweep/liveness.py) – plain HTTP requests between dedup and screening; free.
-LIVENESS_TIMEOUT_SECONDS = 15
+# The request timeout lives in sweep/ats.py (TIMEOUT_SECONDS), which does all the HTTP.
 LIVENESS_PARALLEL = 8
 # Lower-case phrases that mean a posting is closed. Add any new wording you see on a dead posting.
 CLOSED_MARKERS = [
@@ -78,8 +85,9 @@ SOURCES: dict[str, Source] = {
         Source("dice", "Dice", ["dice.com"],
                "Dice is heavy on contract roles. Record employment type (W-2, C2C, C2H) and rate as written."),
         Source("workday_local", "Local employers on Workday", ["myworkdayjobs.com"],
-               "Large local employers post on <company>.wd*.myworkdayjobs.com. Search by role plus "
-               "company or city."),
+               "Large local employers post on <company>.wd*.myworkdayjobs.com/<site>. Find their "
+               "career sites with web search (role plus company or city), then search each site "
+               "with list_company_jobs – the pages themselves are JavaScript and fetch as empty."),
     ]
 }
 

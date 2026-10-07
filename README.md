@@ -10,14 +10,15 @@ in your Google Sheet job tracker.
 python -m sweep ─┼─ research:lever ──── extract ─┼─► dedup ─► liveness ─► screen (Opus) ─► "Sweep inbox" tab
                  ├─ research:hn ─────── extract ─┤                                    + output/<date>/sweep.csv
                  └─ research:builtin ── extract ─┘
-                    Sonnet 5 + web_search/web_fetch, 3 at a time
+                    Sonnet 5 + web_search/web_fetch + job-board API tools, 3 at a time
 ```
 
 | File | What it teaches |
 |---|---|
-| `sweep/research.py` | Server-side tools (`web_search`, `web_fetch`), the manual agent loop, `pause_turn` resumption, then `messages.parse()` for schema-guaranteed extraction |
+| `sweep/research.py` | Server-side tools (`web_search`, `web_fetch`) and client tools (`list_company_jobs`, `get_job_posting`) in one agent loop – `pause_turn` resumption, the `tool_use` → `tool_result` round trip, tool schemas and budgets – then `messages.parse()` for schema-guaranteed extraction |
+| `sweep/ats.py` | Plain HTTP + JSON client for the Ashby, Greenhouse, Lever, and Workday job-board APIs – no Claude imports, so it tests offline and can become its own MCP server |
 | `sweep/models.py` | Pydantic models as structured-output contracts |
-| `sweep/liveness.py` | Plain HTTP check that each posting is still open – drops 404/410s, closed-job text, Greenhouse error redirects, and Ashby jobs missing from the board API |
+| `sweep/liveness.py` | Plain HTTP check that each posting is still open – asks the ATS API for Ashby/Greenhouse/Lever/Workday postings, otherwise drops 404/410s and closed-job text |
 | `sweep/dedup.py` | Keeping deterministic work *out* of the model – cheaper, testable |
 | `sweep/screen.py` | Orchestrator pass on a stronger model; server-side refusal `fallbacks` (beta) |
 | `sweep/costs.py` | Reading `usage` to price every run |
@@ -44,11 +45,31 @@ python -m sweep                                 # same, and appends to the inbox
 
 Workers can't reliably spot closed postings: `web_fetch` returns a trimmed, sometimes cached copy
 of the page, and Dice (for one) keeps serving the full description on closed jobs with HTTP 410.
-So after dedup, `sweep/liveness.py` requests every lead directly. **Closed** leads are dropped
-before screening; **unknown** ones (blocked, or JavaScript-rendered like Workday) are kept and
-their notes start with `[Still open? Unconfirmed: …]`. Every result is saved to
-`output/<run>/liveness.json`. If you see a dead posting slip through, add its wording to
-`CLOSED_MARKERS` in `sweep/config.py`.
+So after dedup, `sweep/liveness.py` requests every lead directly – through the ATS's job-board
+API for Ashby, Greenhouse, Lever, and Workday postings (those APIs answer 404 for a closed job),
+and as a plain page request for everything else. **Closed** leads are dropped before screening;
+**unknown** ones (blocked, or a board API that's down) are kept and their notes start with
+`[Still open? Unconfirmed: …]`. Every result is saved to `output/<run>/liveness.json`. If you see
+a dead posting slip through, add its wording to `CLOSED_MARKERS` in `sweep/config.py`.
+
+## Job-board API tools
+
+Ashby and Workday posting pages are JavaScript shells, so `web_fetch` often gets back an empty
+page and the worker can't verify the lead. Every worker therefore also gets two **client tools**,
+backed by `sweep/ats.py`:
+
+- `list_company_jobs(board_url, title_keywords)` – a company's open postings, filtered by title
+  (Workday sites are searched server-side), with location, workplace type, and pay when posted.
+- `get_job_posting(posting_url)` – one posting's full description, or `status: closed`.
+
+Unlike `web_search`/`web_fetch`, Anthropic doesn't run these. The model stops with
+`stop_reason: "tool_use"`, `research.py` runs the HTTP call and replies with a `tool_result`, and
+the loop goes on. That's also how a failure reaches the model: an unknown slug comes back as a
+`tool_result` with `is_error: true`, and the model moves on instead of the worker crashing. The calls cost nothing,
+but their results are input tokens, so `MAX_BOARD_CALLS_PER_SOURCE`, `BOARD_LIST_LIMIT`, and
+`POSTING_DESCRIPTION_CHARS` in `config.py` cap them. Each source's summary line reads e.g.
+`ashby: 3 searches, 0 fetches, 16 board-API calls`; the full exchange is in
+`output/<run>/transcript-<source>.json`.
 
 ## Tracks
 
