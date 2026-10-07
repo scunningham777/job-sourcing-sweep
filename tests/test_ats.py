@@ -90,7 +90,7 @@ class ParseUrlTests(unittest.TestCase):
                 self.assertEqual(parse_url(url), expected)
 
     def test_unsupported_urls_raise_a_readable_error(self):
-        for url in ["https://www.dice.com/job-detail/abc", "https://acme.wd5.myworkdayjobs.com/", "jobs.lever.co"]:
+        for url in ["https://careers.example.com/jobs/123", "https://acme.wd5.myworkdayjobs.com/", "jobs.lever.co"]:
             with self.subTest(url=url), self.assertRaises(ats.BoardError):
                 parse_url(url)
 
@@ -163,7 +163,7 @@ class PostingStateTests(unittest.TestCase):
         self.assertEqual(ats.posting_state("https://jobs.lever.co/acme/gone", fetch)[0], "closed")
 
     def test_not_an_ats_posting(self):
-        self.assertIsNone(ats.posting_state("https://www.dice.com/job-detail/abc", fetch=None))
+        self.assertIsNone(ats.posting_state("https://careers.example.com/jobs/123", fetch=None))
         self.assertIsNone(ats.posting_state("https://jobs.lever.co/acme", fetch=None))
 
     def test_unknown_board_raises_instead_of_calling_it_closed(self):

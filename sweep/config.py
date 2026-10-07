@@ -82,8 +82,6 @@ SOURCES: dict[str, Source] = {
                 "apexsystems.com", "randstadusa.com", "motionrecruitment.com"],
                "The agency's own posting is the posting – there is usually no client ATS link. Note "
                "W-2 vs 1099/C2C, the hourly rate if given, contract length, and the client industry."),
-        Source("dice", "Dice", ["dice.com"],
-               "Dice is heavy on contract roles. Record employment type (W-2, C2C, C2H) and rate as written."),
         Source("workday_local", "Local employers on Workday", ["myworkdayjobs.com"],
                "Large local employers post on <company>.wd*.myworkdayjobs.com/<site>. Find their "
                "career sites with web search (role plus company or city), then search each site "

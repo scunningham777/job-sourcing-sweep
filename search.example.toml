@@ -23,7 +23,7 @@ country = "US"
 workday_local = "Large local employers on Workday include Acme Corp, Globex, and Initech."
 
 # One table per track. Pick its sources from: ashby, greenhouse, lever, hn, builtin, staffing,
-# dice, workday_local (see SOURCES in sweep/config.py).
+# workday_local (see SOURCES in sweep/config.py).
 #   criteria_file  – the full write-up screening judges every lead against, relative to this folder.
 #                    Put your own in criteria/ (git-ignored); the examples/ ones show the shape.
 #   search_profile – the short version the research workers search for.
@@ -38,7 +38,7 @@ Only postings that are currently open and were posted or refreshed in roughly th
 
 [tracks.local]
 criteria_file = "examples/criteria-local.md"
-sources = ["staffing", "dice", "workday_local"]
+sources = ["staffing", "workday_local"]
 search_profile = """\
 Front-end or full-stack developer roles that could start within a few weeks: contract, \
 contract-to-hire, or full-time. Location: fully remote in the US, or hybrid/on-site within about \

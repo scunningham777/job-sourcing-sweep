@@ -1,7 +1,7 @@
 """Liveness check: is each posting still open? Runs in code, between dedup and screening.
 
 The research workers are told to verify postings, but web_fetch returns a trimmed (sometimes
-cached) copy of the page – Dice, for one, keeps serving the full description on closed jobs with
+cached) copy of the page – some boards keep serving the full description on closed jobs with
 HTTP 410 and a small "no longer available" note that the trimmed copy drops. A plain HTTP request
 sees the status code and the whole page, so this is deterministic, free, and testable.
 
@@ -10,8 +10,8 @@ Postings on Ashby, Greenhouse, Lever, and Workday are asked about through the AT
 it's the only way to check Ashby and Workday, whose pages are JavaScript shells.
 
 Results:
-  not_a_posting – the URL can't be one specific job: empty, or a search/listing page (e.g. Dice's
-            /jobs/q-angular-l-nevada-jobs, which always loads fine). Checked from the URL alone,
+  not_a_posting – the URL can't be one specific job: empty, or a search/listing page (e.g. a
+            Greenhouse company board with no /jobs/<id>, which always loads fine). Checked from the URL alone,
             no request. Dropped before screening.
   closed  – a clear signal the job is gone (404/410, closed-job text, no longer listed by the
             ATS API). Dropped before screening.
@@ -54,9 +54,7 @@ def posting_url_problem(url: str) -> str | None:
     host = parsed.hostname.lower()
     parts = [p.lower() for p in parsed.path.split("/") if p]
 
-    if host.endswith("dice.com"):
-        ok = _segment_after(parts, "job-detail")         # /job-detail/<id>
-    elif host.endswith("myworkdayjobs.com"):
+    if host.endswith("myworkdayjobs.com"):
         ok = _segment_after(parts, "job")                # /<site>/job/<location?>/<title>_<req id>
     elif host.endswith("greenhouse.io"):
         ok = _segment_after(parts, "jobs")               # /<company>/jobs/<id>

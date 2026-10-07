@@ -128,9 +128,9 @@ class SettingsTests(unittest.TestCase):
     def test_bad_settings_fail_with_a_message(self):
         cases = {
             'unknown source': '[tracks.x]\ncriteria_file = "x.md"\nsearch_profile = "x"\nsources = ["nope"]',
-            'missing field': '[tracks.x]\nsources = ["dice"]',
+            'missing field': '[tracks.x]\nsources = ["staffing"]',
             'bad default': 'default_track = "y"\n[tracks.x]\ncriteria_file = "x.md"\n'
-                           'search_profile = "x"\nsources = ["dice"]',
+                           'search_profile = "x"\nsources = ["staffing"]',
             'no tracks': '[location]\ncity = "x"',
         }
         for name, text in cases.items():
@@ -158,7 +158,7 @@ class LivenessTests(unittest.TestCase):
         return classify(url, fetch)
 
     def test_gone_status_is_closed_even_with_full_description(self):
-        result = self.classify("https://www.dice.com/job-detail/abc", self.fake(410))
+        result = self.classify("https://careers.example.com/jobs/123", self.fake(410))
         self.assertEqual((result.state, result.reason), ("closed", "HTTP 410"))
 
     def test_closed_text_on_a_200_page(self):
@@ -187,8 +187,6 @@ class LivenessTests(unittest.TestCase):
     def test_search_and_listing_pages_are_not_postings(self):
         never_fetch = lambda url: self.fail(f"should not fetch {url}")  # rejected from the URL alone
         for url in [
-            "https://www.dice.com/jobs/q-angular-l-nevada-jobs",          # real ones from the Oct 5 run
-            "https://www.dice.com/jobs/q-AngularJS+Developer-l-Springfield,+IL-jobs",
             "https://acme.wd5.myworkdayjobs.com/en-US/External",          # Workday board, no /job/
             "https://job-boards.greenhouse.io/acme",                      # Greenhouse board
             "https://jobs.ashbyhq.com/acme",                              # Ashby board
@@ -202,7 +200,6 @@ class LivenessTests(unittest.TestCase):
     def test_real_posting_urls_pass_the_shape_check(self):
         from sweep.liveness import posting_url_problem
         for url in [
-            "https://www.dice.com/job-detail/0aed1a4c-9f61-4886-b5d8-d1f010684942",
             "https://icf.wd5.myworkdayjobs.com/en-US/ICFExternal_Career_Site/job/Reston-VA/Senior-Front-End-Angular-Developer_R2600968",
             "https://alight.wd5.myworkdayjobs.com/careers/job/us-il-illinois-virtual/software-engineer_r-36272",
             "https://motionrecruitment.com/tech-jobs/palatine/direct-hire/angular-engineer/882629",

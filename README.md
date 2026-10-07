@@ -44,7 +44,7 @@ python -m sweep                                 # same, and appends to the inbox
 ## Liveness check
 
 Workers can't reliably spot closed postings: `web_fetch` returns a trimmed, sometimes cached copy
-of the page, and Dice (for one) keeps serving the full description on closed jobs with HTTP 410.
+of the page, and some boards keep serving the full description on closed jobs with HTTP 410.
 So after dedup, `sweep/liveness.py` requests every lead directly – through the ATS's job-board
 API for Ashby, Greenhouse, Lever, and Workday postings (those APIs answer 404 for a closed job),
 and as a plain page request for everything else. **Closed** leads are dropped before screening;
@@ -84,7 +84,7 @@ local contract work. Each `[tracks.<name>]` table in `search.toml` gives:
 `--track` picks one; `default_track` (or the first track listed) is used otherwise.
 
 ```powershell
-python -m sweep --track local --dry-run --sources dice   # cheapest check of another track
+python -m sweep --track local --dry-run --sources staffing   # cheapest check of another track
 ```
 
 Non-default tracks write to `output/<date>-<track>/` and tag the Source column `<track>:<source>`.
